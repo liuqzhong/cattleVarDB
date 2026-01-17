@@ -1,0 +1,136 @@
+# ============================================
+# Cattle SNP Effect Value Database
+# Docker Compose Configuration
+# ============================================
+#
+# This configuration sets up:
+# - PostgreSQL database
+# - FastAPI backend
+# - Vue 3 frontend
+#
+# Usage:
+#   docker-compose up -d
+#   docker-compose down
+#   docker-compose logs -f
+
+version: '3.8'
+
+services:
+  # ============================================
+  # PostgreSQL Database
+  # ============================================
+  db:
+    image: postgres:15-alpine
+    container_name: cattle_var_db
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: cattle_user
+      POSTGRES_PASSWORD: cattle_pass
+      POSTGRES_DB: cattle_snp_db
+      POSTGRES_INITDB_ARGS: "-E UTF8 --locale=en_US.UTF-8"
+    ports:
+      - "5432:5432"
+    volumes:
+      # Persist database data
+      - postgres_data:/var/lib/postgresql/data
+      # Initialize database schema
+      - ./database/schema.sql:/docker-entrypoint-initdb.d/01-schema.sql:ro
+      # Mount TSV data for import
+      - ./SNP-disease:/data/snp-disease:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cattle_user -d cattle_snp_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - cattle_network
+
+  # ============================================
+  # FastAPI Backend
+  # ============================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cattle_snp_backend
+    restart: unless-stopped
+    environment:
+      DATABASE_URL: postgresql://cattle_user:cattle_pass@db:5432/cattle_snp_db
+      LOG_LEVEL: info
+    ports:
+      - "8000:8000"
+    volumes:
+      # Mount data directory for import script
+      - ./SNP-disease:/data/snp-disease:ro
+      # Mount import logs
+      - ./backend/logs:/app/logs
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - cattle_network
+
+  # ============================================
+  # Vue 3 Frontend
+  # ============================================
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ""
+    container_name: cattle_snp_frontend
+    restart: unless-stopped
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cattle_network
+
+  # ============================================
+  # Data Import Service (One-time task)
+  # ============================================
+  data-import:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: cattle_snp_import
+    environment:
+      DATABASE_URL: postgresql://cattle_user:cattle_pass@db:5432/cattle_snp_db
+    volumes:
+      - ./SNP-disease:/data/snp-disease:ro
+      - ./backend/logs:/app/logs
+    command: >
+      sh -c "
+        echo 'Waiting for database...' &&
+        sleep 10 &&
+        echo 'Starting data import...' &&
+        python import_data.py --file /data/snp-disease/variant_sad_all_targets.tsv --batch-size 1000 --refresh-views
+      "
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - cattle_network
+    profiles:
+      - import  # Only run with: docker-compose --profile import up data-import
+
+# ============================================
+# Volumes
+# ============================================
+volumes:
+  postgres_data:
+    driver: local
+
+# ============================================
+# Networks
+# ============================================
+networks:
+  cattle_network:
+    driver: bridge

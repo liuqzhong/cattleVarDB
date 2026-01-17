@@ -1,0 +1,26 @@
+# ============================================
+# Cattle SNP Effect Value Database - Backend Dependencies
+# 牛变异效应值数据库 - 后端依赖
+# ============================================
+
+# FastAPI framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+
+# Database
+sqlalchemy==2.0.25
+psycopg2-binary==2.9.9
+
+# Data validation
+pydantic==2.5.3
+pydantic-settings==2.1.0
+
+# Utilities
+python-multipart==0.0.6
+python-dotenv==1.0.0
+
+# Progress bar for data import
+tqdm==4.66.1
+
+# CORS support
+python-jose[cryptography]==3.3.0

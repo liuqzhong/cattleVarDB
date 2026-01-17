@@ -1,0 +1,78 @@
+/**
+ * ============================================
+ * Global Styles
+ * ============================================
+ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html, body {
+  height: 100%;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol',
+    'Noto Color Emoji';
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#app {
+  min-height: 100vh;
+  background: #f5f7fa;
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Element Plus custom adjustments */
+.el-card {
+  border-radius: 8px;
+}
+
+.el-table {
+  font-size: 14px;
+}
+
+.el-table th {
+  background: #fafafa;
+}
+
+/* Loading overlay */
+.el-loading-mask {
+  background-color: rgba(255, 255, 255, 0.9);
+}
+
+/* Responsive utilities */
+@media (max-width: 768px) {
+  .el-dialog {
+    width: 90% !important;
+  }
+
+  .el-table .cell {
+    padding-left: 5px;
+    padding-right: 5px;
+  }
+}

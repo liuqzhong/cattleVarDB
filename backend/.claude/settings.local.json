@@ -1,0 +1,24 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(pip install:*)",
+      "Bash(where:*)",
+      "Bash(py -0)",
+      "Bash(py -3.13 -m venv:*)",
+      "Bash(venv313\\Scripts\\pip:*)",
+      "Bash(.\\venv313\\Scripts\\pip install:*)",
+      "Bash(venv313/Scripts/pip:*)",
+      "Bash(venv313/Scripts/uvicorn:*)",
+      "Bash(\"E:\\soft_app\\VSDevDependent\\Python\\Python312\\python.exe\":*)",
+      "Bash(venv312/Scripts/pip:*)",
+      "Bash(venv312/Scripts/uvicorn:*)",
+      "Bash(timeout:*)",
+      "Bash(curl:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker inspect:*)",
+      "Bash(ping:*)"
+    ],
+    "deny": [],
+    "ask": []
+  }
+}
