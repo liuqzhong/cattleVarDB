@@ -72,6 +72,12 @@ const routes = [
     name: 'Help',
     component: () => import('../views/HelpView.vue'),
     meta: { title: 'Help & Documentation' }
+  },
+  {
+    path: '/test-igv',
+    name: 'TestIGV',
+    component: () => import('../views/TestIGV.vue'),
+    meta: { title: 'IGV Test' }
   }
 ]
 

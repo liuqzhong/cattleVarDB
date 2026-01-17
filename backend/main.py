@@ -775,6 +775,100 @@ async def get_statistics(db: Session = Depends(get_db)):
         )
 
 
+@app.get("/snps/{snp_id}/region", response_model=dict)
+async def get_snp_region_data(
+    snp_id: int,
+    window_size: int = Query(50000, ge=1000, le=1000000, description="窗口大小（bp）"),
+    db: Session = Depends(get_db)
+):
+    """
+    获取 SNP 周围区域的数据，用于 IGV 可视化
+
+    返回指定窗口范围内的：
+    - 所有基因
+    - 所有 SNP
+    """
+    try:
+        # 获取 SNP 信息
+        snp = db.query(SNPModel).filter(SNPModel.id == snp_id).first()
+        if not snp:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail=f"SNP with id {snp_id} not found"
+            )
+
+        chrom = snp.chrom
+        center_pos = snp.pos
+        start_pos = max(1, center_pos - window_size // 2)
+        end_pos = center_pos + window_size // 2
+
+        # 获取窗口范围内的所有基因
+        genes = db.query(GeneModel).filter(
+            GeneModel.chrom == chrom,
+            GeneModel.start_pos <= end_pos,
+            GeneModel.end_pos >= start_pos
+        ).all()
+
+        # 转换基因数据为 BED 格式（IGV 可用）
+        gene_features = []
+        for gene in genes:
+            gene_features.append({
+                "chrom": chrom,
+                "start": gene.start_pos - 1,  # BED 格式是 0-based
+                "end": gene.end_pos,
+                "name": gene.gene_name or gene.gene_id,
+                "gene_id": gene.gene_id,
+                "strand": gene.strand or "+",
+                "gene_biotype": gene.gene_biotype
+            })
+
+        # 获取窗口范围内的所有 SNP
+        snps = db.query(SNPModel).filter(
+            SNPModel.chrom == chrom,
+            SNPModel.pos >= start_pos,
+            SNPModel.pos <= end_pos
+        ).all()
+
+        snp_features = []
+        for s in snps:
+            snp_features.append({
+                "chrom": chrom,
+                "start": s.pos - 1,
+                "end": s.pos,
+                "name": s.rs_id,
+                "snp_id": s.rs_id,
+                "ref": s.ref_allele,
+                "alt": s.alt_allele,
+                "pos": s.pos
+            })
+
+        return {
+            "chrom": chrom,
+            "start": start_pos,
+            "end": end_pos,
+            "center_snp": {
+                "id": snp.id,
+                "snp_id": snp.rs_id,
+                "pos": snp.pos,
+                "ref": snp.ref_allele,
+                "alt": snp.alt_allele
+            },
+            "genes": gene_features,
+            "snps": snp_features,
+            "total_genes": len(gene_features),
+            "total_snps": len(snp_features)
+        }
+
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Error fetching region data: {str(e)}")
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Failed to fetch region data: {str(e)}"
+        )
+
+
 # ============================================
 # Exception Handlers
 # ============================================

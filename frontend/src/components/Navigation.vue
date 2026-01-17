@@ -97,6 +97,11 @@ const activeMenu = computed(() => route.path)
   margin-right: 5px;
 }
 
+/* 加粗子菜单标题 */
+.navigation-menu .el-sub-menu__title span {
+  font-weight: bold;
+}
+
 @media (max-width: 768px) {
   .logo {
     margin-right: 20px;

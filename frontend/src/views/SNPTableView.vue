@@ -167,148 +167,219 @@
     <!-- Detail Dialog -->
     <el-dialog
       v-model="detailDialogVisible"
-      title="SNP Details"
-      width="70%"
+      title=""
+      width="80%"
       :close-on-click-modal="false"
+      class="snp-detail-dialog"
     >
       <div v-if="currentSnp" class="snp-detail">
-        <el-descriptions :column="2" border>
-          <el-descriptions-item label="ID">{{ currentSnp.id }}</el-descriptions-item>
-          <el-descriptions-item label="rsID">{{ currentSnp.rs_id || '-' }}</el-descriptions-item>
-          <el-descriptions-item label="Chromosome">{{ currentSnp.chrom }}</el-descriptions-item>
-          <el-descriptions-item label="Position">{{ formatNumber(currentSnp.pos) }}</el-descriptions-item>
-          <el-descriptions-item label="Reference Allele">
-            <el-tag type="info">{{ currentSnp.ref_allele }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="Alternate Allele">
-            <el-tag type="warning">{{ currentSnp.alt_allele }}</el-tag>
-          </el-descriptions-item>
-          <el-descriptions-item label="Maximum Absolute SAD Value" :span="2">
-            <span class="sad-value-large">{{ currentSnp.max_abs_sad.toFixed(8) }}</span>
-          </el-descriptions-item>
-        </el-descriptions>
-
-        <!-- Nearest Gene Information -->
-        <div v-if="currentSnp.nearest_gene" class="gene-info-section">
-          <el-divider>Nearest Gene</el-divider>
-          <el-alert type="success" :closable="false" class="gene-alert">
+        <!-- 使用折叠面板组织内容 -->
+        <el-collapse v-model="activeCollapse" class="detail-collapse">
+          <!-- Variant Information -->
+          <el-collapse-item title="Variant Information" name="variant">
             <template #title>
-              <div class="gene-info">
-                <div class="gene-main">
-                  <span class="gene-label">Gene Name:</span>
-                  <el-tag size="large" type="success">{{ currentSnp.nearest_gene.gene_name || currentSnp.nearest_gene.gene_id }}</el-tag>
-                  <span v-if="currentSnp.nearest_gene.location === 'within'" class="location-badge">
-                    <el-tag type="primary" size="small">Within Gene</el-tag>
-                  </span>
-                  <span v-else class="location-badge">
-                    <el-tag type="info" size="small">Nearby ({{ formatNumber(currentSnp.nearest_gene.distance) }} bp)</el-tag>
-                  </span>
-                </div>
-                <div class="gene-details">
-                  <span class="gene-detail-item"><strong>Gene ID:</strong> {{ currentSnp.nearest_gene.gene_id }}</span>
-                  <span class="gene-detail-item"><strong>Location:</strong> Chr{{ currentSnp.nearest_gene.chrom }}:{{ formatNumber(currentSnp.nearest_gene.start_pos) }}-{{ formatNumber(currentSnp.nearest_gene.end_pos) }} ({{ currentSnp.nearest_gene.strand }} strand)</span>
-                  <span class="gene-detail-item"><strong>Biotype:</strong> {{ currentSnp.nearest_gene.gene_biotype || 'N/A' }}</span>
-                  <span v-if="currentSnp.nearest_gene.region" class="gene-detail-item">
-                    <strong>Region:</strong>
-                    <el-tag v-if="currentSnp.nearest_gene.region.startsWith('exon')" type="success" size="small">
-                      {{ currentSnp.nearest_gene.region }}
-                    </el-tag>
-                    <el-tag v-else-if="currentSnp.nearest_gene.region === 'intron'" type="warning" size="small">
-                      Intron
-                    </el-tag>
-                    <el-tag v-else type="info" size="small">
-                      {{ currentSnp.nearest_gene.region }}
-                    </el-tag>
-                  </span>
-                </div>
+              <div class="collapse-title">
+                <el-icon><InfoFilled /></el-icon>
+                <span class="title-text">Variant Information</span>
               </div>
             </template>
-          </el-alert>
-        </div>
-        <div v-else class="gene-info-section">
-          <el-divider>Nearest Gene</el-divider>
-          <el-alert type="info" :closable="false">No gene information available</el-alert>
-        </div>
 
-        <el-divider>Effect Values Distribution</el-divider>
-
-        <div v-loading="effectLoading" class="chart-container">
-          <div v-if="!effectLoading && currentSnp.effect_values && currentSnp.effect_values.length > 0" ref="boxPlotChart" class="box-plot-chart"></div>
-          <el-alert
-            v-if="!effectLoading && (!currentSnp.effect_values || currentSnp.effect_values.length === 0)"
-            title="No effect values available"
-            type="info"
-            :closable="false"
-          />
-        </div>
-
-        <el-divider>Effect Values Histogram</el-divider>
-
-        <div v-loading="effectLoading" class="chart-container">
-          <div v-if="!effectLoading && currentSnp.effect_values && currentSnp.effect_values.length > 0" ref="histogramChart" class="histogram-chart"></div>
-        </div>
-
-        <el-divider>Effect Values Data</el-divider>
-
-        <div v-loading="effectLoading" class="effects-container">
-          <!-- Filter and Export Controls -->
-          <el-row :gutter="20" class="controls-row">
-            <el-col :span="16">
-              <el-input
-                v-model="targetFilter"
-                placeholder="Filter by target name"
-                clearable
-                @clear="handleFilterClear"
-                @input="handleTargetFilter"
-              >
-                <template #prefix>
-                  <el-icon><Search /></el-icon>
+            <div class="variant-section">
+              <!-- SNP 基本信息 -->
+              <el-card shadow="never" class="info-card">
+                <template #header>
+                  <div class="card-header">
+                    <span class="card-title">Basic Information</span>
+                  </div>
                 </template>
-              </el-input>
-            </el-col>
-            <el-col :span="8">
-              <el-button
-                type="primary"
-                @click="handleExportCSV"
-                :loading="exporting"
-                style="width: 100%"
-              >
-                <el-icon><Download /></el-icon>
-                Export CSV
-              </el-button>
-            </el-col>
-          </el-row>
+                <el-descriptions :column="2" border size="small">
+                  <el-descriptions-item label="SNP ID">{{ currentSnp.id }}</el-descriptions-item>
+                  <el-descriptions-item label="rsID">
+                    <span v-if="currentSnp.rs_id" class="rs-id">{{ currentSnp.rs_id }}</span>
+                    <span v-else class="text-muted">-</span>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Chromosome">{{ currentSnp.chrom }}</el-descriptions-item>
+                  <el-descriptions-item label="Position">{{ formatNumber(currentSnp.pos) }}</el-descriptions-item>
+                  <el-descriptions-item label="Reference Allele">
+                    <el-tag type="info" size="small">{{ currentSnp.ref_allele }}</el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Alternate Allele">
+                    <el-tag type="warning" size="small">{{ currentSnp.alt_allele }}</el-tag>
+                  </el-descriptions-item>
+                  <el-descriptions-item label="Maximum Absolute SAD Value" :span="2">
+                    <span class="sad-value-large">{{ currentSnp.max_abs_sad.toFixed(8) }}</span>
+                  </el-descriptions-item>
+                </el-descriptions>
+              </el-card>
 
-          <el-table
-            v-if="currentSnp.effect_values && currentSnp.effect_values.length > 0"
-            :data="filteredEffectValues"
-            stripe
-            max-height="400"
-            :default-sort="{ prop: 'effect_value', order: 'descending' }"
-          >
-            <el-table-column
-              prop="target_name"
-              label="Target Name"
-              width="300"
-            />
-            <el-table-column
-              prop="effect_value"
-              label="Effect Value"
-              sortable
-            >
-              <template #default="{ row }">
-                <span :class="getEffectValueClass(row.effect_value)">
-                  {{ row.effect_value.toFixed(6) }}
-                </span>
-              </template>
-            </el-table-column>
-          </el-table>
+              <!-- Nearest Gene 信息 -->
+              <el-card shadow="never" class="info-card" v-if="currentSnp.nearest_gene">
+                <template #header>
+                  <div class="card-header">
+                    <span class="card-title">Nearest Gene Annotation</span>
+                  </div>
+                </template>
+                <el-alert type="success" :closable="false" class="gene-alert">
+                  <template #title>
+                    <div class="gene-info">
+                      <div class="gene-main">
+                        <span class="gene-label">Gene Name:</span>
+                        <el-tag size="large" type="success">{{ currentSnp.nearest_gene.gene_name || currentSnp.nearest_gene.gene_id }}</el-tag>
+                        <span v-if="currentSnp.nearest_gene.location === 'within'" class="location-badge">
+                          <el-tag type="primary" size="small">Within Gene</el-tag>
+                        </span>
+                        <span v-else class="location-badge">
+                          <el-tag type="info" size="small">Nearby ({{ formatNumber(currentSnp.nearest_gene.distance) }} bp)</el-tag>
+                        </span>
+                      </div>
+                      <div class="gene-details">
+                        <span class="gene-detail-item"><strong>Gene ID:</strong> {{ currentSnp.nearest_gene.gene_id }}</span>
+                        <span class="gene-detail-item"><strong>Location:</strong> Chr{{ currentSnp.nearest_gene.chrom }}:{{ formatNumber(currentSnp.nearest_gene.start_pos) }}-{{ formatNumber(currentSnp.nearest_gene.end_pos) }} ({{ currentSnp.nearest_gene.strand }} strand)</span>
+                        <span class="gene-detail-item"><strong>Biotype:</strong> {{ currentSnp.nearest_gene.gene_biotype || 'N/A' }}</span>
+                        <span v-if="currentSnp.nearest_gene.region" class="gene-detail-item">
+                          <strong>Region:</strong>
+                          <el-tag v-if="currentSnp.nearest_gene.region.startsWith('exon')" type="success" size="small">
+                            {{ currentSnp.nearest_gene.region }}
+                          </el-tag>
+                          <el-tag v-else-if="currentSnp.nearest_gene.region === 'intron'" type="warning" size="small">
+                            Intron
+                          </el-tag>
+                          <el-tag v-else type="info" size="small">
+                            {{ currentSnp.nearest_gene.region }}
+                          </el-tag>
+                        </span>
+                      </div>
+                    </div>
+                  </template>
+                </el-alert>
+              </el-card>
 
-          <el-empty
-            v-if="!effectLoading && filteredEffectValues.length === 0 && currentSnp.effect_values.length > 0"
-            description="No matching targets found"
-          />
-        </div>
+              <!-- Genomic Region Viewer -->
+              <el-card shadow="never" class="info-card">
+                <template #header>
+                  <div class="card-header">
+                    <span class="card-title">Genomic Context (50K Region)</span>
+                  </div>
+                </template>
+                <RegionViewer :snp-id="currentSnp.id" />
+              </el-card>
+            </div>
+          </el-collapse-item>
+
+          <!-- SNP Activity Difference Score Analysis -->
+          <el-collapse-item title="SNP Activity Difference Score Analysis" name="effect">
+            <template #title>
+              <div class="collapse-title">
+                <el-icon><DataAnalysis /></el-icon>
+                <span class="title-text">SNP Activity Difference Score Analysis</span>
+              </div>
+            </template>
+
+            <div class="effect-section">
+              <!-- SNP Activity Difference Score Distribution -->
+              <el-card shadow="never" class="info-card">
+                <template #header>
+                  <div class="card-header">
+                    <span class="card-title">SNP Activity Difference Score Distribution</span>
+                    <el-text size="small" type="info">Box plot showing statistical distribution</el-text>
+                  </div>
+                </template>
+                <div v-loading="effectLoading" class="chart-container">
+                  <div v-if="!effectLoading && currentSnp.effect_values && currentSnp.effect_values.length > 0" ref="boxPlotChart" class="box-plot-chart"></div>
+                  <el-alert
+                    v-if="!effectLoading && (!currentSnp.effect_values || currentSnp.effect_values.length === 0)"
+                    title="No effect values available"
+                    type="info"
+                    :closable="false"
+                  />
+                </div>
+              </el-card>
+
+              <!-- SNP Activity Difference Score Histogram -->
+              <el-card shadow="never" class="info-card">
+                <template #header>
+                  <div class="card-header">
+                    <span class="card-title">SNP Activity Difference Score Histogram</span>
+                    <el-text size="small" type="info">Frequency distribution across targets</el-text>
+                  </div>
+                </template>
+                <div v-loading="effectLoading" class="chart-container">
+                  <div v-if="!effectLoading && currentSnp.effect_values && currentSnp.effect_values.length > 0" ref="histogramChart" class="histogram-chart"></div>
+                </div>
+              </el-card>
+
+              <!-- SNP Activity Difference Score for each target -->
+              <el-card shadow="never" class="info-card">
+                <template #header>
+                  <div class="card-header">
+                    <span class="card-title">SNP Activity Difference Score for each target</span>
+                    <el-text size="small" type="info">SNP Activity Difference Scores for all targets</el-text>
+                  </div>
+                </template>
+
+                <div v-loading="effectLoading" class="effects-container">
+                  <!-- Filter and Export Controls -->
+                  <el-row :gutter="20" class="controls-row">
+                    <el-col :span="16">
+                      <el-input
+                        v-model="targetFilter"
+                        placeholder="Filter by target name"
+                        clearable
+                        @clear="handleFilterClear"
+                        @input="handleTargetFilter"
+                      >
+                        <template #prefix>
+                          <el-icon><Search /></el-icon>
+                        </template>
+                      </el-input>
+                    </el-col>
+                    <el-col :span="8">
+                      <el-button
+                        type="primary"
+                        @click="handleExportCSV"
+                        :loading="exporting"
+                        style="width: 100%"
+                      >
+                        <el-icon><Download /></el-icon>
+                        Export CSV
+                      </el-button>
+                    </el-col>
+                  </el-row>
+
+                  <el-table
+                    v-if="currentSnp.effect_values && currentSnp.effect_values.length > 0"
+                    :data="filteredEffectValues"
+                    stripe
+                    max-height="400"
+                    :default-sort="{ prop: 'effect_value', order: 'descending' }"
+                  >
+                    <el-table-column
+                      prop="target_name"
+                      label="Target Name"
+                      width="300"
+                    />
+                    <el-table-column
+                      prop="effect_value"
+                      label="Effect Value"
+                      sortable
+                    >
+                      <template #default="{ row }">
+                        <span :class="getEffectValueClass(row.effect_value)">
+                          {{ row.effect_value.toFixed(6) }}
+                        </span>
+                      </template>
+                    </el-table-column>
+                  </el-table>
+
+                  <el-empty
+                    v-if="!effectLoading && filteredEffectValues.length === 0 && currentSnp.effect_values.length > 0"
+                    description="No matching targets found"
+                  />
+                </div>
+              </el-card>
+            </div>
+          </el-collapse-item>
+        </el-collapse>
       </div>
     </el-dialog>
   </div>
@@ -317,8 +388,13 @@
 <script setup>
 import { ref, onMounted, onUnmounted, computed, nextTick, watch } from 'vue'
 import { ElMessage } from 'element-plus'
+import { InfoFilled, DataAnalysis } from '@element-plus/icons-vue'
 import { snpApi, statsApi } from '../services/api'
 import * as echarts from 'echarts'
+import RegionViewer from '../components/RegionViewer.vue'
+
+// 控制折叠面板的展开状态
+const activeCollapse = ref(['variant', 'effect'])
 
 // Data
 const loading = ref(false)
@@ -762,7 +838,7 @@ const renderHistogram = () => {
 
     const option = {
       title: {
-        text: `Effect Value Distribution (N=${effectValues.length}, Bins=${binCount})`,
+        text: `SNP Activity Difference Score Distribution (N=${effectValues.length}, Bins=${binCount})`,
         left: 'center',
         textStyle: {
           fontSize: 16,
@@ -791,14 +867,16 @@ const renderHistogram = () => {
       grid: {
         left: '10%',
         right: '10%',
-        bottom: '20%',
+        bottom: '28%',
         top: '15%',
         containLabel: true
       },
       xAxis: {
         type: 'category',
         data: binLabels,
-        name: 'Effect Value Range',
+        name: 'SNP Activity Difference Score Range',
+        nameLocation: 'middle',
+        nameGap: 70,
         nameTextStyle: {
           fontSize: 14,
           fontWeight: 'bold'
@@ -967,6 +1045,65 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+/* Dialog Styles */
+.snp-detail-dialog :deep(.el-dialog__body) {
+  padding-top: 10px;
+}
+
+/* Collapse Panel Styles */
+.detail-collapse {
+  border: none;
+}
+
+.collapse-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.collapse-title .el-icon {
+  font-size: 18px;
+  color: #409EFF;
+}
+
+.title-text {
+  flex: 1;
+}
+
+/* Section Layouts */
+.variant-section,
+.effect-section {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Card Styles */
+.info-card {
+  border: 1px solid #e4e7ed;
+}
+
+.info-card :deep(.el-card__header) {
+  padding: 12px 16px;
+  background: #fafafa;
+  border-bottom: 1px solid #e4e7ed;
+}
+
+.card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.card-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: #303133;
+}
+
 .snp-table-view {
   padding: 20px;
   max-width: 1400px;
