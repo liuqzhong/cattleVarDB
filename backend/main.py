@@ -92,6 +92,48 @@ class SNPEffectModel(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
 
 
+class GeneModel(Base):
+    """基因注释表"""
+    __tablename__ = "genes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    gene_id = Column(String(50), nullable=False, unique=True, index=True)
+    gene_name = Column(String(255), nullable=True)
+    chrom = Column(String(50), nullable=False, index=True)  # Increased from 10 to 50
+    start_pos = Column(BigInteger, nullable=False)
+    end_pos = Column(BigInteger, nullable=False)
+    strand = Column(String(1), nullable=True)
+    gene_biotype = Column(String(100), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class TranscriptModel(Base):
+    """转录本表"""
+    __tablename__ = "transcripts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    transcript_id = Column(String(50), nullable=False, unique=True, index=True)
+    gene_id = Column(String(50), nullable=False, index=True)
+    chrom = Column(String(50), nullable=False, index=True)
+    start_pos = Column(BigInteger, nullable=False)
+    end_pos = Column(BigInteger, nullable=False)
+    strand = Column(String(1), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class ExonModel(Base):
+    """外显子表"""
+    __tablename__ = "exons"
+
+    id = Column(BigInteger, primary_key=True, index=True)
+    transcript_id = Column(String(50), nullable=False, index=True)
+    chrom = Column(String(50), nullable=False, index=True)
+    start_pos = Column(BigInteger, nullable=False)
+    end_pos = Column(BigInteger, nullable=False)
+    exon_number = Column(Integer, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
 # ============================================
 # Pydantic Schemas
 # ============================================
@@ -128,6 +170,19 @@ class SNPPaginatedResponse(BaseModel):
 class SNPDetailResponse(SNPResponse):
     """SNP详情响应Schema（包含效应值）"""
     effect_values: List[dict] = Field(default=[], description="效应值列表")
+    nearest_gene: Optional[dict] = Field(default=None, description="最近的基因信息")
+
+
+class GeneInfoResponse(BaseModel):
+    """基因信息响应"""
+    gene_id: str
+    gene_name: Optional[str] = None
+    chrom: str
+    start_pos: int
+    end_pos: int
+    strand: Optional[str] = None
+    distance: int = Field(..., description="SNP 到基因的距离")
+    gene_biotype: Optional[str] = None
 
 
 class EffectValueResponse(BaseModel):
@@ -214,6 +269,139 @@ def parse_chrom_pos(query: str) -> Optional[tuple]:
 def calculate_total_pages(total: int, page_size: int) -> int:
     """计算总页数"""
     return (total + page_size - 1) // page_size if page_size > 0 else 0
+
+
+def find_nearest_gene(db: Session, chrom: str, pos: int) -> Optional[dict]:
+    """
+    查找最近的基因
+
+    Args:
+        db: 数据库会话
+        chrom: 染色体
+        pos: SNP 位置
+
+    Returns:
+        最近基因的信息字典，如果没有找到则返回 None
+    """
+    try:
+        # 查找同一染色体上的所有基因
+        # 优先查找包含该位置的基因（SNP 在基因内）
+        genes_within = db.query(GeneModel).filter(
+            GeneModel.chrom == chrom,
+            GeneModel.start_pos <= pos,
+            GeneModel.end_pos >= pos
+        ).first()
+
+        if genes_within:
+            # SNP 在基因内
+            return {
+                "gene_id": genes_within.gene_id,
+                "gene_name": genes_within.gene_name,
+                "chrom": genes_within.chrom,
+                "start_pos": genes_within.start_pos,
+                "end_pos": genes_within.end_pos,
+                "strand": genes_within.strand,
+                "distance": 0,
+                "gene_biotype": genes_within.gene_biotype,
+                "location": "within"
+            }
+
+        # 如果没有找到包含 SNP 的基因，查找最近的基因
+        # 查找基因起始位置在 SNP 之前的最近基因
+        gene_before = db.query(GeneModel).filter(
+            GeneModel.chrom == chrom,
+            GeneModel.end_pos < pos
+        ).order_by(
+            GeneModel.end_pos.desc()
+        ).first()
+
+        # 查找基因起始位置在 SNP 之后的最近基因
+        gene_after = db.query(GeneModel).filter(
+            GeneModel.chrom == chrom,
+            GeneModel.start_pos > pos
+        ).order_by(
+            GeneModel.start_pos.asc()
+        ).first()
+
+        # 计算距离并选择最近的
+        nearest = None
+        min_distance = float('inf')
+
+        if gene_before:
+            distance_before = pos - gene_before.end_pos
+            if distance_before < min_distance:
+                min_distance = distance_before
+                nearest = gene_before
+
+        if gene_after:
+            distance_after = gene_after.start_pos - pos
+            if distance_after < min_distance:
+                min_distance = distance_after
+                nearest = gene_after
+
+        if nearest:
+            return {
+                "gene_id": nearest.gene_id,
+                "gene_name": nearest.gene_name,
+                "chrom": nearest.chrom,
+                "start_pos": nearest.start_pos,
+                "end_pos": nearest.end_pos,
+                "strand": nearest.strand,
+                "distance": int(min_distance),
+                "gene_biotype": nearest.gene_biotype,
+                "location": "nearby"
+            }
+
+        return None
+
+    except Exception as e:
+        logger.error(f"Error finding nearest gene: {str(e)}")
+        return None
+
+
+def detect_snp_region(db: Session, chrom: str, pos: int, gene_id: str) -> Optional[str]:
+    """
+    检测 SNP 在基因中的具体区域
+
+    Returns:
+        区域类型：exon, intron, utr_5_prime, utr_3_prime, upstream, downstream
+    """
+    try:
+        # 获取该基因的所有转录本
+        transcripts = db.query(TranscriptModel).filter(
+            TranscriptModel.gene_id == gene_id,
+            TranscriptModel.chrom == chrom
+        ).all()
+
+        if not transcripts:
+            return "intergenic"
+
+        # 检查每个转录本
+        for transcript in transcripts:
+            # 检查 SNP 是否在转录本范围内
+            if pos < transcript.start_pos or pos > transcript.end_pos:
+                continue
+
+            # 检查是否在外显子中
+            exon = db.query(ExonModel).filter(
+                ExonModel.transcript_id == transcript.transcript_id,
+                ExonModel.chrom == chrom,
+                ExonModel.start_pos <= pos,
+                ExonModel.end_pos >= pos
+            ).first()
+
+            if exon:
+                return f"exon {exon.exon_number}"
+
+            # 如果不在外显子中，那就在内含子中
+            return "intron"
+
+        # 如果遍历完所有转录本都没有匹配，说明在基因间
+        return "intergenic"
+
+    except Exception as e:
+        logger.error(f"Error detecting SNP region: {str(e)}")
+        return None
 
 
 # ============================================
@@ -507,9 +695,19 @@ async def get_snp_detail(
             for effect in effects
         ]
 
+        # Find nearest gene
+        nearest_gene = find_nearest_gene(db, snp.chrom, snp.pos)
+
+        # Detect SNP region (exon, intron, etc.)
+        if nearest_gene and nearest_gene.get('location') == 'within':
+            region = detect_snp_region(db, snp.chrom, snp.pos, nearest_gene['gene_id'])
+            if region:
+                nearest_gene['region'] = region
+
         return SNPDetailResponse(
             **snp.__dict__,
-            effect_values=effect_values
+            effect_values=effect_values,
+            nearest_gene=nearest_gene
         )
 
     except HTTPException:

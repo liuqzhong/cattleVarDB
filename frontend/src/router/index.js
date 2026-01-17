@@ -17,13 +17,49 @@ const routes = [
     path: '/snps',
     name: 'SNPList',
     component: () => import('../views/SNPTableView.vue'),
-    meta: { title: 'SNP Database' }
+    meta: { title: 'SNPs - Search Activity Difference' }
+  },
+  {
+    path: '/indels',
+    name: 'IndelList',
+    component: () => import('../views/IndelTableView.vue'),
+    meta: { title: 'Indels - Search Activity Difference' }
+  },
+  {
+    path: '/svs',
+    name: 'SVList',
+    component: () => import('../views/SVTableView.vue'),
+    meta: { title: 'SVs - Search Activity Difference' }
+  },
+  {
+    path: '/exp-snps',
+    name: 'ExpSNPList',
+    component: () => import('../views/ExpSNPTableView.vue'),
+    meta: { title: 'SNPs - Search Expression Difference' }
+  },
+  {
+    path: '/exp-indels',
+    name: 'ExpIndelList',
+    component: () => import('../views/ExpIndelTableView.vue'),
+    meta: { title: 'Indels - Search Expression Difference' }
+  },
+  {
+    path: '/exp-svs',
+    name: 'ExpSVList',
+    component: () => import('../views/ExpSVTableView.vue'),
+    meta: { title: 'SVs - Search Expression Difference' }
   },
   {
     path: '/sv',
     name: 'SV',
     component: () => import('../views/SVView.vue'),
-    meta: { title: 'Structural Variants' }
+    meta: { title: 'Search Expression Difference' }
+  },
+  {
+    path: '/prediction',
+    name: 'Prediction',
+    component: () => import('../views/PredictionView.vue'),
+    meta: { title: 'Prediction' }
   },
   {
     path: '/download',

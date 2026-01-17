@@ -4,9 +4,9 @@
     <div class="page-header">
       <h1>
         <el-icon><Collection /></el-icon>
-        Cattle SNP Effect Database
+        SNP Activity Difference (SAD) Database
       </h1>
-      <p class="subtitle">Comprehensive SNP Effect Values for Cattle Genomics</p>
+      <p class="subtitle">Comprehensive database of variant effect evaluations for cattle genomics Genomics</p>
     </div>
 
     <!-- Stats Cards -->
@@ -187,6 +187,48 @@
             <span class="sad-value-large">{{ currentSnp.max_abs_sad.toFixed(8) }}</span>
           </el-descriptions-item>
         </el-descriptions>
+
+        <!-- Nearest Gene Information -->
+        <div v-if="currentSnp.nearest_gene" class="gene-info-section">
+          <el-divider>Nearest Gene</el-divider>
+          <el-alert type="success" :closable="false" class="gene-alert">
+            <template #title>
+              <div class="gene-info">
+                <div class="gene-main">
+                  <span class="gene-label">Gene Name:</span>
+                  <el-tag size="large" type="success">{{ currentSnp.nearest_gene.gene_name || currentSnp.nearest_gene.gene_id }}</el-tag>
+                  <span v-if="currentSnp.nearest_gene.location === 'within'" class="location-badge">
+                    <el-tag type="primary" size="small">Within Gene</el-tag>
+                  </span>
+                  <span v-else class="location-badge">
+                    <el-tag type="info" size="small">Nearby ({{ formatNumber(currentSnp.nearest_gene.distance) }} bp)</el-tag>
+                  </span>
+                </div>
+                <div class="gene-details">
+                  <span class="gene-detail-item"><strong>Gene ID:</strong> {{ currentSnp.nearest_gene.gene_id }}</span>
+                  <span class="gene-detail-item"><strong>Location:</strong> Chr{{ currentSnp.nearest_gene.chrom }}:{{ formatNumber(currentSnp.nearest_gene.start_pos) }}-{{ formatNumber(currentSnp.nearest_gene.end_pos) }} ({{ currentSnp.nearest_gene.strand }} strand)</span>
+                  <span class="gene-detail-item"><strong>Biotype:</strong> {{ currentSnp.nearest_gene.gene_biotype || 'N/A' }}</span>
+                  <span v-if="currentSnp.nearest_gene.region" class="gene-detail-item">
+                    <strong>Region:</strong>
+                    <el-tag v-if="currentSnp.nearest_gene.region.startsWith('exon')" type="success" size="small">
+                      {{ currentSnp.nearest_gene.region }}
+                    </el-tag>
+                    <el-tag v-else-if="currentSnp.nearest_gene.region === 'intron'" type="warning" size="small">
+                      Intron
+                    </el-tag>
+                    <el-tag v-else type="info" size="small">
+                      {{ currentSnp.nearest_gene.region }}
+                    </el-tag>
+                  </span>
+                </div>
+              </div>
+            </template>
+          </el-alert>
+        </div>
+        <div v-else class="gene-info-section">
+          <el-divider>Nearest Gene</el-divider>
+          <el-alert type="info" :closable="false">No gene information available</el-alert>
+        </div>
 
         <el-divider>Effect Values Distribution</el-divider>
 
@@ -1017,8 +1059,58 @@ onUnmounted(() => {
 .sad-value-large {
   font-family: 'Courier New', monospace;
   font-size: 18px;
-  font-weight: bold;
+  font-weight: 600;
   color: #409EFF;
+}
+
+/* Gene Information Styles */
+.gene-info-section {
+  margin: 20px 0;
+}
+
+.gene-alert {
+  margin: 10px 0;
+}
+
+.gene-info {
+  width: 100%;
+}
+
+.gene-main {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 12px;
+}
+
+.gene-label {
+  font-size: 15px;
+  font-weight: 600;
+  color: #303133;
+}
+
+.location-badge {
+  margin-left: auto;
+}
+
+.gene-details {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-left: 20px;
+  border-left: 3px solid #67C23A;
+}
+
+.gene-detail-item {
+  font-size: 14px;
+  color: #606266;
+  line-height: 1.6;
+}
+
+.gene-detail-item strong {
+  color: #303133;
+  margin-right: 8px;
 }
 
 .effects-container {

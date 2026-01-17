@@ -123,11 +123,10 @@ def parse_gtf_file(gtf_file_path):
                 'gene_id': gene_id,
                 'gene_name': gene_name or None,
                 'chrom': chrom,
-                'start': start,
-                'end': end,
+                'start_pos': start,
+                'end_pos': end,
                 'strand': strand,
-                'gene_type': gene_type or None,
-                'description': description or None
+                'gene_biotype': gene_type or None
             }
 
             genes_added += 1

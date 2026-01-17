@@ -4,9 +4,9 @@
     <div class="page-header">
       <h1>
         <el-icon><Collection /></el-icon>
-        Cattle SNP Effect Database
+        Cattle variant Effect Database
       </h1>
-      <p class="subtitle">Comprehensive SNP Effect Values for Cattle Genomics Research</p>
+      <p class="subtitle">Comprehensive variant (SNP,Indel,SV) Effect evaluation for Cattle Genomics Research</p>
     </div>
 
     <!-- Stats Cards -->

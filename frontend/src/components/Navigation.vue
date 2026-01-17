@@ -15,13 +15,27 @@
         <el-icon><HomeFilled /></el-icon>
         <span>Home</span>
       </el-menu-item>
-      <el-menu-item index="/snps">
-        <el-icon><Grid /></el-icon>
-        <span>SNP Database</span>
-      </el-menu-item>
-      <el-menu-item index="/sv">
-        <el-icon><Operation /></el-icon>
-        <span>SV</span>
+      <el-sub-menu index="activity-diff">
+        <template #title>
+          <el-icon><Grid /></el-icon>
+          <span>Search Activity Difference</span>
+        </template>
+        <el-menu-item index="/snps">SNPs</el-menu-item>
+        <el-menu-item index="/indels">Indels</el-menu-item>
+        <el-menu-item index="/svs">SVs</el-menu-item>
+      </el-sub-menu>
+      <el-sub-menu index="expression-diff">
+        <template #title>
+          <el-icon><Operation /></el-icon>
+          <span>Search Expression Difference</span>
+        </template>
+        <el-menu-item index="/exp-snps">SNPs</el-menu-item>
+        <el-menu-item index="/exp-indels">Indels</el-menu-item>
+        <el-menu-item index="/exp-svs">SVs</el-menu-item>
+      </el-sub-menu>
+      <el-menu-item index="/prediction">
+        <el-icon><TrendCharts /></el-icon>
+        <span>Prediction</span>
       </el-menu-item>
       <el-menu-item index="/download">
         <el-icon><Download /></el-icon>
